@@ -29,7 +29,7 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: 8.6
+          gradle-version: 8.10.2
 
       - name: Install JS dependencies
         run: npm install --no-audit --no-fund
@@ -41,7 +41,7 @@ jobs:
       - name: Install Android SDK/NDK packages
         run: |
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
-          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-34" "build-tools;34.0.0" "ndk;26.1.10909125"
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-35" "build-tools;35.0.0" "ndk;26.1.10909125"
 
       - name: Prepare signing (optional)
         env:
