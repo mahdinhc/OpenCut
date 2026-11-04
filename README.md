@@ -28,18 +28,17 @@ Transitions, keyframes, PIP *video* overlays, reverse, freeze frame, auto-captio
 
 ## Build locally
 ```bash
-npm install
-cd android && gradle wrapper --gradle-version 8.6 && cd ..
-npx react-native run-android          # debug on a device
+bash scripts/bootstrap.sh            # generates android/ from the RN 0.76.9 template + applies native/kotlin
+npx react-native run-android         # debug on a device
 cd android && ./gradlew assembleRelease
 ```
-Requirements: Node 18+, JDK 17, Android SDK 34, NDK 26.1.10909125.
+Requirements: Node 18+, JDK 17, Android SDK 35. Only `native/kotlin/`, `scripts/` and the JS sources live in git; `android/` is generated (same approach as OpenKeys). Delete any old hand-made `android/` folder - bootstrap also does this if it has no `gradlew`.
 
 ## GitHub Actions
-`.github/workflows/android.yml` builds a release APK (arm64 + armv7) and a debug APK on every push/PR, uploads them as the `OpenCut-apk` artifact, and attaches the release APK to a GitHub Release when you push a tag like `v0.1.0`.
+`.github/workflows/android.yml` runs the bootstrap, builds a release APK (arm64 + armv7), uploads it as the `OpenCut-apk` artifact and attaches it to a GitHub Release when you push a tag like `v0.1.0`.
 
 Without secrets the release APK is signed with the debug key (fine for testing). For a properly signed build add repository secrets: `ANDROID_KEYSTORE_BASE64` (`base64 -w0 my.keystore`), `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`.
 
 ## Notes
-- Min Android 10 (API 29). Media3 is pinned to 1.5.1; all Transformer API use is in `ExportEngine.kt` if you bump versions.
+- Min Android 10 (API 29). React Native 0.76.9, Media3 pinned to 1.5.1; all Transformer API use is in `ExportEngine.kt` if you bump versions.
 - Native code was written without a compiler in the loop - expect to fix a few small compile errors on first build (most likely in `ExportEngine.kt`).

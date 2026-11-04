@@ -2,10 +2,9 @@ node_modules/
 .gradle/
 android/build/
 android/app/build/
-android/app/*.keystore
+android/.gradle/
 android/local.properties
-android/gradlew*
-android/gradle/
 *.apk
 *.aab
 .idea/
+.DS_Store
