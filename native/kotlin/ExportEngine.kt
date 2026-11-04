@@ -26,6 +26,7 @@ import androidx.media3.effect.FrameDropEffect
 import androidx.media3.effect.OverlayEffect
 import androidx.media3.effect.Presentation
 import androidx.media3.effect.SpeedChangeEffect
+import androidx.media3.effect.TextureOverlay
 import androidx.media3.transformer.Composition
 import androidx.media3.transformer.DefaultEncoderFactory
 import androidx.media3.transformer.EditedMediaItem
@@ -122,7 +123,7 @@ class ExportEngine(private val ctx: Context) {
         if (mainItems.isEmpty()) throw IllegalStateException("Nothing to export")
         val mainSeq = EditedMediaItemSequence.Builder().also { sb ->
             mainItems.forEach { sb.addItem(it) }
-            sb.experimentalSetForceAudioTrack(true)
+            sb.setForceAudioTrack(true)
         }.build()
         val sequences = ArrayList<EditedMediaItemSequence>()
         sequences.add(mainSeq)
@@ -159,7 +160,7 @@ class ExportEngine(private val ctx: Context) {
         compVfx.add(FrameDropEffect.createDefaultFrameDropEffect(fps.toFloat()))
         val ovs = spec.getJSONArray("overlays")
         if (ovs.length() > 0) {
-            compVfx.add(OverlayEffect(ImmutableList.of(FrameOverlay(ctx, w, h, ovs))))
+            compVfx.add(OverlayEffect(ImmutableList.of<TextureOverlay>(FrameOverlay(ctx, w, h, ovs))))
         }
         val composition = Composition.Builder(sequences).setEffects(Effects(emptyList(), compVfx)).build()
 
