@@ -123,7 +123,6 @@ class ExportEngine(private val ctx: Context) {
         if (mainItems.isEmpty()) throw IllegalStateException("Nothing to export")
         val mainSeq = EditedMediaItemSequence.Builder().also { sb ->
             mainItems.forEach { sb.addItem(it) }
-            sb.setForceAudioTrack(true)
         }.build()
         val sequences = ArrayList<EditedMediaItemSequence>()
         sequences.add(mainSeq)
@@ -162,7 +161,7 @@ class ExportEngine(private val ctx: Context) {
         if (ovs.length() > 0) {
             compVfx.add(OverlayEffect(ImmutableList.of<TextureOverlay>(FrameOverlay(ctx, w, h, ovs))))
         }
-        val composition = Composition.Builder(sequences).setEffects(Effects(emptyList(), compVfx)).build()
+        val composition = Composition.Builder(sequences).setEffects(Effects(emptyList(), compVfx)).experimentalSetForceAudioTrack(true).build()
 
         val enc = DefaultEncoderFactory.Builder(ctx)
             .setRequestedVideoEncoderSettings(VideoEncoderSettings.Builder().setBitrate(spec.optInt("bitrate", 12_000_000)).build())
