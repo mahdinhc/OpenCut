@@ -1,10 +1,11 @@
-import React, {memo, useEffect, useMemo, useState} from 'react';
+import React, {memo, useEffect, useMemo, useRef, useState} from 'react';
 import {Image, LayoutChangeEvent, Pressable, StyleSheet, Text, View} from 'react-native';
 import {Gesture, GestureDetector} from 'react-native-gesture-handler';
 import Animated, {runOnJS, useAnimatedStyle, useSharedValue} from 'react-native-reanimated';
 import {PreviewView} from '../native/engine';
 import {useEditor} from '../store/editor';
 import {useTransport} from '../store/transport';
+import {useUI} from '../store/ui';
 import {previewAudio, previewTimeline} from '../engine/spec';
 import {RATIO_VALUE, StickerItem, TextItem, Transform} from '../types';
 import TextBody from './TextBody';
@@ -96,6 +97,9 @@ export default function Preview() {
   if (ch > box.h) { ch = box.h; cw = ch * ratio; }
   const timeline = useMemo(() => JSON.stringify(previewTimeline(project)), [project.main]);
   const audio = useMemo(() => JSON.stringify(previewAudio(project)), [project.audio]);
+  const busy = useUI(s => s.busy);
+  const frozen = useRef({timeline, audio});
+  if (!busy) frozen.current = {timeline, audio};   // while trimming/dragging the native player keeps the last stable playlist
 
   return (
     <View style={s.area} onLayout={e => setBox({w: e.nativeEvent.layout.width, h: e.nativeEvent.layout.height})}>
@@ -103,7 +107,7 @@ export default function Preview() {
         <View style={{width: cw, height: ch, backgroundColor: '#000', overflow: 'hidden'}}>
           <PreviewView
             style={StyleSheet.absoluteFill}
-            timeline={timeline} audio={audio} playing={playing} seek={seek}
+            timeline={frozen.current.timeline} audio={frozen.current.audio} playing={playing} seek={seek}
             onProgress={e => useTransport.getState().setPos(e.nativeEvent.ms)}
             onEnded={() => { const t = useTransport.getState(); t.pause(); t.setPos(t.total); }}
           />

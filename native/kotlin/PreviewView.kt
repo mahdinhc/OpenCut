@@ -46,15 +46,19 @@ class PreviewView(private val rc: ThemedReactContext) : FrameLayout(rc) {
     private var totalMs = 0L
     private var curMs = 0L
     private var wantPlaying = false
-    private var lastFxKey = ""
+    private var lastRot = Float.NaN
+    private val live = LiveFx()
+    private var scrubbing = false
+    private var tick = 0
+    private val refresh = Runnable { forceFrame() }
 
     private val ticker = object : Runnable {
         override fun run() {
             val t = timelineMs()
             curMs = t
-            emitProgress(t)
+            if ((tick++ and 1) == 0) emitProgress(t)   // JS gets ~30 Hz; the timeline interpolates between events
             syncAudio(true, t)
-            if (wantPlaying) handler.postDelayed(this, 33)
+            if (wantPlaying) handler.postDelayed(this, 16)
         }
     }
 
@@ -69,8 +73,9 @@ class PreviewView(private val rc: ThemedReactContext) : FrameLayout(rc) {
         pv.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
         pv.setShutterBackgroundColor(Color.BLACK)
         pv.player = player
+        player.setVideoEffects(buildLiveEffects(live, 0f)); lastRot = 0f
         addView(pv, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
-        player.setSeekParameters(SeekParameters.CLOSEST_SYNC)
+        player.setSeekParameters(SeekParameters.EXACT)
         player.addListener(object : Player.Listener {
             override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) = applySeg(player.currentMediaItemIndex)
             override fun onPlaybackStateChanged(state: Int) {
@@ -114,7 +119,6 @@ class PreviewView(private val rc: ThemedReactContext) : FrameLayout(rc) {
             structKey = key
             rebuild()
         } else {
-            lastFxKey = ""
             applySeg(player.currentMediaItemIndex)
         }
     }
@@ -156,6 +160,7 @@ class PreviewView(private val rc: ThemedReactContext) : FrameLayout(rc) {
         if (idx < 0) idx = 0
         val s = segs[idx]
         val local = if (s.isImage) curMs - s.startMs else ((curMs - s.startMs) * s.speed).toLong()
+        scrubbing = !exact
         player.setSeekParameters(if (exact) SeekParameters.EXACT else SeekParameters.CLOSEST_SYNC)
         player.seekTo(idx, local.coerceAtLeast(0L))
         applySeg(idx)
@@ -173,7 +178,6 @@ class PreviewView(private val rc: ThemedReactContext) : FrameLayout(rc) {
             )
             b.build()
         }
-        lastFxKey = ""
         player.setMediaItems(items, false)
         player.prepare()
         if (segs.isNotEmpty()) seek(curMs, true)
@@ -184,11 +188,24 @@ class PreviewView(private val rc: ThemedReactContext) : FrameLayout(rc) {
         val s = segs.getOrNull(i) ?: return
         player.playbackParameters = PlaybackParameters(if (s.isImage) 1f else s.speed)
         player.volume = s.volume.coerceIn(0f, 1f)
-        val key = "$i|${s.fx.brightness}|${s.fx.contrast}|${s.fx.matrix?.contentHashCode()}|${s.fx.rotation}|${s.fx.flipX}|${s.fx.flipY}|${s.fx.zoom}"
-        if (key != lastFxKey) {
-            lastFxKey = key
-            player.setVideoEffects(buildEffects(s.fx))
+        live.set(s.fx)                       // colour / zoom / flip: read per frame, no pipeline rebuild
+        if (s.fx.rotation != lastRot) {      // rotation changes the frame size -> swap the static effect
+            lastRot = s.fx.rotation
+            player.setVideoEffects(buildLiveEffects(live, s.fx.rotation))
         }
+        if (!wantPlaying) scheduleRefresh()
+    }
+
+    /** A paused player does not redraw on its own: re-present the current frame so edits show immediately. */
+    private fun scheduleRefresh() {
+        handler.removeCallbacks(refresh)
+        handler.postDelayed(refresh, 30)
+    }
+
+    private fun forceFrame() {
+        if (wantPlaying || segs.isEmpty() || scrubbing) return
+        player.setSeekParameters(SeekParameters.EXACT)
+        player.seekTo(player.currentMediaItemIndex, player.currentPosition)
     }
 
     private fun timelineMs(): Long {

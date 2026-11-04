@@ -8,6 +8,8 @@ interface UI {
   picker: PickerPurpose;
   panel: PanelName;
   toast: string | null;
+  busy: boolean;
+  setBusy: (b: boolean) => void;
   setRoute: (r: 'home' | 'editor') => void;
   setPicker: (p: PickerPurpose) => void;
   setPanel: (p: PanelName) => void;
@@ -15,7 +17,8 @@ interface UI {
 }
 let timer: any;
 export const useUI = create<UI>(set => ({
-  route: 'home', picker: null, panel: null, toast: null,
+  route: 'home', picker: null, panel: null, toast: null, busy: false,
+  setBusy: busy => set({busy}),
   setRoute: route => set({route}),
   setPicker: picker => set({picker}),
   setPanel: panel => set({panel}),

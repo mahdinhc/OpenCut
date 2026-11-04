@@ -1,6 +1,6 @@
 import React from 'react';
 import {Text, View} from 'react-native';
-import {FONT} from '../theme';
+import {fontFamily} from '../theme';
 import {TextStyle} from '../types';
 
 /** Shared by the live preview and the style panel; mirrors ExportEngine.drawText. */
@@ -13,7 +13,7 @@ export default function TextBody({text, style, canvasW}: {text: string; style: T
       paddingHorizontal: style.bg ? size * 0.35 : 0, paddingVertical: style.bg ? size * 0.15 : 0, borderRadius: size * 0.25,
     }}>
       <Text style={{
-        color: style.color, fontSize: size, fontFamily: FONT[style.font], fontWeight: (style.bold ? '700' : '400'),
+        color: style.color, fontSize: size, fontFamily: fontFamily(style.font), fontWeight: (style.bold ? '700' : '400'),
         fontStyle: style.italic ? 'italic' : 'normal', textAlign: style.align,
         textShadowColor: style.strokeColor && sw > 0 ? style.strokeColor : style.shadow ? 'rgba(0,0,0,0.67)' : 'transparent',
         textShadowRadius: style.strokeColor && sw > 0 ? Math.max(1, sw * 1.2) : style.shadow ? size * 0.08 : 0,

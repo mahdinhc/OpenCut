@@ -1,7 +1,7 @@
 import React, {memo, useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {Image, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions} from 'react-native';
 import {Gesture, GestureDetector} from 'react-native-gesture-handler';
-import Animated, {runOnJS, useAnimatedScrollHandler, useSharedValue, useAnimatedStyle} from 'react-native-reanimated';
+import Animated, {Easing, runOnJS, scrollTo, useAnimatedReaction, useAnimatedRef, useAnimatedScrollHandler, useSharedValue, useAnimatedStyle, withTiming} from 'react-native-reanimated';
 import Icon from '../ui/Icon';
 import {C} from '../theme';
 import {Engine} from '../native/engine';
@@ -91,7 +91,7 @@ const MainClipView = memo(function MainClipView({clip, left, width, selected, pp
         <View style={[s.clipBox, selected && s.sel]}>
           <View style={{flexDirection: 'row', flex: 1}}>
             {Array.from({length: n}).map((_, i) => (
-              <Image key={i} source={paths[i] ? {uri: paths[i]} : undefined} style={{width: width / n, height: '100%', backgroundColor: C.main}} resizeMode="cover" />
+              <Image key={i} source={paths[i] ? {uri: paths[i]} : undefined} style={{width: width / n, height: '100%', backgroundColor: C.main}} resizeMode="cover" fadeDuration={0} />
             ))}
           </View>
           <View style={s.badge}>
@@ -110,7 +110,7 @@ const MainClipView = memo(function MainClipView({clip, left, width, selected, pp
 function Wave({uri, inMs, durationMs, srcMs, width}: {uri: string; inMs: number; durationMs: number; srcMs: number; width: number}) {
   const [w, setW] = useState<number[]>([]);
   useEffect(() => { let on = true; Engine.getWaveform(uri, 240).then(x => on && setW(x)); return () => { on = false; }; }, [uri]);
-  const bars = clamp(Math.floor(width / 4), 2, 160);
+  const bars = clamp(Math.floor(width / 5), 2, 90);
   return (
     <View style={{flexDirection: 'row', alignItems: 'center', height: LANE_H - 6, overflow: 'hidden'}}>
       {Array.from({length: bars}).map((_, i) => {
@@ -200,7 +200,8 @@ export default function Timeline() {
   const ppm = 0.08 * zoom;
   const {starts, total} = useMemo(() => layoutMain(project.main), [project.main]);
   const pad = width / 2;
-  const scroller = useRef<Animated.ScrollView>(null);
+  const scroller = useAnimatedRef<Animated.ScrollView>();
+  const posSV = useSharedValue(0), ppmSV = useSharedValue(0.08);
   const user = useSharedValue(false);
   const zoomSV = useSharedValue(1), zoomBase = useSharedValue(1);
 
@@ -225,17 +226,27 @@ export default function Timeline() {
     onMomentumEnd: () => { user.value = false; runOnJS(endScrub)(); },
   });
 
-  // Follow playback / programmatic seeks without re-rendering.
+  // Follow playback / seeks entirely on the UI thread: native position events (~30 Hz) are interpolated to a
+  // linear 60 fps glide, so the playhead never steps.
+  useAnimatedReaction(
+    () => posSV.value * ppmSV.value,
+    x => { if (!user.value) scrollTo(scroller, x, 0, false); },
+  );
   useEffect(() => {
-    const go = (pos: number) => scroller.current?.scrollTo({x: pos * ppm, animated: false});
-    go(useTransport.getState().pos);
-    return useTransport.subscribe((st, prev) => { if (st.pos !== prev.pos && !st.scrubbing) go(st.pos); });
+    ppmSV.value = ppm;
+    posSV.value = useTransport.getState().pos;
+    return useTransport.subscribe((st, prev) => {
+      if (st.pos === prev.pos || st.scrubbing) return;
+      const d = st.pos - prev.pos;
+      if (st.playing && d > 0 && d < 250) posSV.value = withTiming(st.pos + 34, {duration: 34, easing: Easing.linear});
+      else posSV.value = st.pos;
+    });
   }, [ppm]);
   useEffect(() => { useTransport.getState().setTotal(total); }, [total]);
 
   const pinch = Gesture.Pinch()
     .onBegin(() => { zoomBase.value = zoomSV.value; })
-    .onUpdate(e => { zoomSV.value = clamp(zoomBase.value * e.scale, 0.15, 10); runOnJS(setZoom)(zoomSV.value); });
+    .onUpdate(e => { const z = Math.round(clamp(zoomBase.value * e.scale, 0.15, 10) * 25) / 25; if (z !== zoomSV.value) { zoomSV.value = z; runOnJS(setZoom)(z); } });
 
   const rows = (items: Ov[]) => (items.length ? Math.max(...items.map(i => i.row)) + 1 : 0);
   const tRows = rows(project.texts), sRows = rows(project.stickers), aRows = rows(project.audio);
@@ -244,7 +255,7 @@ export default function Timeline() {
   const mainTop = RULER_H + topLanes * (LANE_H + GAP) + 4;
   const audioTop = mainTop + MAIN_H + 8;
   const height = audioTop + Math.max(aRows, 1) * (LANE_H + GAP) + 10;
-  const setLock = useCallback((b: boolean) => setLocked(b), []);
+  const setLock = useCallback((b: boolean) => { setLocked(b); useUI.getState().setBusy(b); }, []);
   const addMedia = () => useUI.getState().setPicker('main');
 
   return (
@@ -253,7 +264,7 @@ export default function Timeline() {
         <ScrollView style={{flex: 1}} nestedScrollEnabled showsVerticalScrollIndicator={false}>
           <Animated.ScrollView
             ref={scroller} horizontal showsHorizontalScrollIndicator={false} scrollEnabled={!locked}
-            onScroll={scrollHandler} scrollEventThrottle={16} decelerationRate="fast" nestedScrollEnabled
+            onScroll={scrollHandler} scrollEventThrottle={16} decelerationRate="normal" overScrollMode="never" removeClippedSubviews nestedScrollEnabled
           >
             <View style={{width: contentW, height}}>
               <Ruler total={total} ppm={ppm} pad={pad} />

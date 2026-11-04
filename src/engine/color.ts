@@ -40,18 +40,19 @@ export function buildFx(a: Adjust, filterId: string | null, intensity: number): 
   const f = FILTERS.find(x => x.id === filterId);
   if (f) m = lerp(I, f.m, clamp(intensity, 0, 1));
   m = mul(m, sat(1 + a.saturation / 100));
-  const k = Math.pow(2, a.exposure / 100);
-  m = mul(diag(k, k, k), m);
+  const k0 = Math.pow(2, a.exposure / 100);
+  m = mul(diag(k0, k0, k0), m);
   const w = a.warmth / 100 * 0.25;
   m = mul(diag(1 + w, 1, 1 - w), m);
   const t = a.tint / 100 * 0.2;
   m = mul(diag(1, 1 - t, 1), m);
-  const identity = m.every((v, i) => Math.abs(v - I[i]) < 1e-4);
-  let out: number[] | null = null;
-  if (!identity) {
-    out = new Array(16).fill(0);
-    for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) out[j * 4 + i] = m[i * 3 + j]; // column-major
-    out[15] = 1;
-  }
-  return {brightness: clamp(a.brightness / 100 * 0.5, -1, 1), contrast: clamp(a.contrast / 100, -1, 1), matrix: out};
+  // contrast pivots around mid-grey, brightness is an additive offset (column 3 of the 4x4 = translation)
+  const k = 1 + clamp(a.contrast / 100, -1, 1) * 0.6;
+  const off = 0.5 * (1 - k) + clamp((a.brightness / 100) * 0.35, -1, 1);
+  const out = new Array(16).fill(0);
+  for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) out[j * 4 + i] = m[i * 3 + j] * k; // column-major
+  out[12] = out[13] = out[14] = off;
+  out[15] = 1;
+  const identity = out.every((v, i) => Math.abs(v - (i % 5 === 0 ? 1 : 0)) < 1e-4);
+  return {brightness: 0, contrast: 0, matrix: identity ? null : out};
 }

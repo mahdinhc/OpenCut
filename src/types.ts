@@ -18,7 +18,7 @@ export interface MainClip {
   flipH: boolean; flipV: boolean; rotation: number; zoom: number;
 }
 export interface TextStyle {
-  font: 'sans' | 'serif' | 'mono' | 'condensed'; size: number; color: string;
+  font: string; // font id: bundled (poppins, serif, mono, condensed) or custom_*; size: number; color: string;
   bg: string | null; strokeColor: string | null; strokeWidth: number;
   bold: boolean; italic: boolean; align: 'left' | 'center' | 'right'; shadow: boolean;
 }

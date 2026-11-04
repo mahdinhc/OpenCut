@@ -32,7 +32,43 @@ class EngineModule(private val rc: ReactApplicationContext) : ReactContextBaseJa
     private var export: ExportEngine? = null
     private val thumbDir = File(rc.cacheDir, "oc_thumbs").also { it.mkdirs() }
 
-    init { rc.addActivityEventListener(this) }
+    private var fontPromise: Promise? = null
+
+    init { rc.addActivityEventListener(this); Fonts.init(rc) }
+
+    @ReactMethod
+    fun getFonts(promise: Promise) {
+        val out = Arguments.createArray()
+        for (f in Fonts.list()) { val m = Arguments.createMap(); m.putString("id", f.id); m.putString("label", f.label); m.putBoolean("custom", f.custom); out.pushMap(m) }
+        promise.resolve(out)
+    }
+
+    @ReactMethod
+    fun importFont(promise: Promise) {
+        val act = currentActivity
+        if (act == null) { promise.reject("E_NO_ACTIVITY", "no activity"); return }
+        fontPromise = promise
+        val i = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE); type = "*/*"
+            putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("font/ttf", "font/otf", "font/sfnt", "application/x-font-ttf", "application/x-font-otf", "application/octet-stream"))
+        }
+        act.startActivityForResult(i, 7702)
+    }
+
+    private fun handleFont(uri: Uri, p: Promise) {
+        io.execute {
+            try {
+                var name = displayName(uri)
+                if (!name.lowercase().endsWith(".ttf") && !name.lowercase().endsWith(".otf")) name = "$name.ttf"
+                val dir = File(rc.filesDir, "fonts").also { it.mkdirs() }
+                val dst = File(dir, name.replace(Regex("[^A-Za-z0-9_. -]"), "_"))
+                rc.contentResolver.openInputStream(uri)!!.use { i -> FileOutputStream(dst).use { o -> i.copyTo(o) } }
+                val fam = try { Fonts.loadCustom(dst) } catch (t: Throwable) { dst.delete(); throw t }
+                val m = Arguments.createMap(); m.putString("id", fam.id); m.putString("label", fam.label); m.putBoolean("custom", true)
+                p.resolve(m)
+            } catch (t: Throwable) { p.reject("E_FONT", t.message ?: "Could not load font") }
+        }
+    }
 
     @ReactMethod fun addListener(name: String) {}
     @ReactMethod fun removeListeners(count: Int) {}
@@ -215,6 +251,13 @@ class EngineModule(private val rc: ReactApplicationContext) : ReactContextBaseJa
     }
 
     override fun onActivityResult(activity: Activity, requestCode: Int, resultCode: Int, data: Intent?) {
+        if (requestCode == 7702) {
+            val fp = fontPromise ?: return
+            fontPromise = null
+            val fu = data?.data
+            if (resultCode != Activity.RESULT_OK || fu == null) fp.resolve(null) else handleFont(fu, fp)
+            return
+        }
         if (requestCode != 7701) return
         val p = pickPromise ?: return
         pickPromise = null

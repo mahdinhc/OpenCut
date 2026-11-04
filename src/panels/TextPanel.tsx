@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import {Pressable, ScrollView, StyleSheet, Text, TextInput, View} from 'react-native';
 import Sheet, {Chip} from '../ui/Sheet';
 import Slider from '../ui/Slider';
@@ -6,6 +6,9 @@ import Icon from '../ui/Icon';
 import {C} from '../theme';
 import {useEditor} from '../store/editor';
 import {TextStyle} from '../types';
+import {Engine, FontInfo} from '../native/engine';
+import {fontFamily} from '../theme';
+import {useUI} from '../store/ui';
 
 const COLORS = ['#FFFFFF', '#000000', '#FF453A', '#FF9F0A', '#FFD60A', '#32D74B', '#25F4EE', '#0A84FF', '#BF5AF2', '#FF2D55', '#8E8E93', '#FFD6E8'];
 const PRESETS: {name: string; style: Partial<TextStyle>}[] = [
@@ -26,6 +29,17 @@ export default function TextPanel({onClose}: {onClose: () => void}) {
   const upd = useEditor(s => s.updateItem);
   const cp = useEditor(s => s.checkpoint);
   const [tab, setTab] = useState<(typeof TABS)[number]>('Text');
+  const [fonts, setFonts] = useState<FontInfo[]>([]);
+  useEffect(() => { Engine.getFonts().then(setFonts).catch(() => {}); }, []);
+  const addFont = async () => {
+    try {
+      const f = await Engine.importFont();
+      if (!f) return;
+      setFonts(p => (p.some(x => x.id === f.id) ? p : [...p, f]));
+      upd('text', item.id, {style: {...item.style, font: f.id}}, true);
+      useUI.getState().showToast(`Font added: ${f.label}`);
+    } catch (e: any) { useUI.getState().showToast(e?.message ?? 'Could not load that font file'); }
+  };
   if (!item) return null;
   const st = item.style;
   const setStyle = (p: Partial<TextStyle>, history = true) => upd('text', item.id, {style: {...st, ...p}}, history);
@@ -56,9 +70,17 @@ export default function TextPanel({onClose}: {onClose: () => void}) {
         ) : null}
         {tab === 'Font' ? (
           <View>
-            <View style={{flexDirection: 'row'}}>
-              {(['sans', 'serif', 'mono', 'condensed'] as const).map(f => <Chip key={f} label={f} active={st.font === f} onPress={() => setStyle({font: f})} />)}
-            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{marginBottom: 6}}>
+              <Pressable onPress={addFont} style={[s.fontBtn, {borderColor: C.accent, borderWidth: 1}]}>
+                <Icon name="plus" size={18} color={C.accent} /><Text style={{color: C.accent, fontSize: 12, marginTop: 2}}>Custom</Text>
+              </Pressable>
+              {fonts.map(f => (
+                <Pressable key={f.id} onPress={() => setStyle({font: f.id})} style={[s.fontBtn, (st.font === f.id || (st.font === 'sans' && f.id === 'poppins')) && {backgroundColor: C.accent}]}>
+                  <Text numberOfLines={1} style={{fontFamily: fontFamily(f.id), fontSize: 20, color: (st.font === f.id || (st.font === 'sans' && f.id === 'poppins')) ? '#000' : C.text}}>Aa</Text>
+                  <Text numberOfLines={1} style={{fontSize: 10, marginTop: 2, color: (st.font === f.id || (st.font === 'sans' && f.id === 'poppins')) ? '#000' : C.sub}}>{f.label}</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
             <Slider label="Size" value={Math.round(st.size * 1000)} min={20} max={200} onStart={cp} onChange={v => setStyle({size: v / 1000}, false)} />
           </View>
         ) : null}
@@ -94,5 +116,6 @@ const s = StyleSheet.create({
   sw: {width: 34, height: 34, borderRadius: 17, marginRight: 10, borderWidth: 1, borderColor: C.line},
   swOn: {borderWidth: 3, borderColor: C.accent},
   preset: {paddingHorizontal: 16, height: 56, borderRadius: 10, backgroundColor: C.card, alignItems: 'center', justifyContent: 'center', marginRight: 8},
+  fontBtn: {width: 74, height: 56, borderRadius: 10, backgroundColor: C.card2, alignItems: 'center', justifyContent: 'center', marginRight: 8, paddingHorizontal: 4},
   tg: {width: 42, height: 38, borderRadius: 8, backgroundColor: C.card2, alignItems: 'center', justifyContent: 'center', marginRight: 8},
 });

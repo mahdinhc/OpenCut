@@ -3,4 +3,5 @@ export const C = {
   text: '#FFFFFF', sub: '#9A9AA2', accent: '#25F4EE', accent2: '#FE2C55', danger: '#FF453A',
   main: '#34343A', textClip: '#7C5CFF', stickerClip: '#FF9F0A', audioClip: '#1FA67A',
 };
-export const FONT = {sans: 'sans-serif', serif: 'serif', mono: 'monospace', condensed: 'sans-serif-condensed'} as const;
+/** Font ids are registered natively under the same name (see Fonts.kt), so the id IS the RN fontFamily. */
+export const fontFamily = (id: string) => (id === 'sans' ? 'poppins' : id);

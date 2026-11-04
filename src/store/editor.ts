@@ -6,7 +6,7 @@ import {clamp, uid} from '../util';
 export const DEFAULT_ADJUST: Adjust = {brightness: 0, contrast: 0, saturation: 0, exposure: 0, warmth: 0, tint: 0};
 export const DEFAULT_TRANSFORM: Transform = {x: 0.5, y: 0.5, scale: 1, rotation: 0, opacity: 1};
 export const DEFAULT_TEXT_STYLE: TextStyle = {
-  font: 'sans', size: 0.07, color: '#FFFFFF', bg: null, strokeColor: null, strokeWidth: 0,
+  font: 'poppins', size: 0.07, color: '#FFFFFF', bg: null, strokeColor: null, strokeWidth: 0,
   bold: true, italic: false, align: 'center', shadow: true,
 };
 export const IMAGE_DEFAULT_MS = 3000;

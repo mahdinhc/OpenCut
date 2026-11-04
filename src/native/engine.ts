@@ -6,6 +6,8 @@ export const engineEvents = new NativeEventEmitter(M);
 export interface GalleryItem { id: string; uri: string; kind: 'video' | 'image'; name: string; width: number; height: number; durationMs: number }
 export interface Probe { uri: string; kind: 'video' | 'image' | 'audio'; name: string; width: number; height: number; durationMs: number; hasAudio: boolean }
 
+export interface FontInfo { id: string; label: string; custom: boolean }
+
 const waveCache = new Map<string, Promise<number[]>>();
 
 export const Engine = {
@@ -17,6 +19,8 @@ export const Engine = {
     if (!waveCache.has(k)) waveCache.set(k, M.getWaveform(uri, buckets).catch(() => new Array(buckets).fill(0.3)));
     return waveCache.get(k)!;
   },
+  getFonts: (): Promise<FontInfo[]> => M.getFonts(),
+  importFont: (): Promise<FontInfo | null> => M.importFont(),
   pickFile: (mime: string): Promise<Probe | null> => M.pickFile(mime),
   startExport: (spec: object): Promise<string> => M.startExport(JSON.stringify(spec)),
   cancelExport: () => M.cancelExport(),

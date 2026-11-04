@@ -6,6 +6,7 @@ import androidx.media3.common.Effect
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.effect.Brightness
 import androidx.media3.effect.Contrast
+import androidx.media3.effect.MatrixTransformation
 import androidx.media3.effect.RgbMatrix
 import androidx.media3.effect.ScaleAndRotateTransformation
 import org.json.JSONObject
@@ -55,5 +56,43 @@ fun buildEffects(fx: Fx): List<Effect> {
                 .build()
         )
     }
+    return out
+}
+
+
+/**
+ * Live look for the preview: the effect chain is built once and reads these values every frame, so slider drags and
+ * filter changes show instantly without rebuilding the GL pipeline (what pro editors do). Rotation is the only thing that
+ * changes the frame size, so it is a static effect swapped on clip transitions.
+ */
+class LiveFx {
+    @Volatile var color: FloatArray = FloatArray(16).also { it[0] = 1f; it[5] = 1f; it[10] = 1f; it[15] = 1f }
+    @Volatile var zoom = 1f
+    @Volatile var flipX = false
+    @Volatile var flipY = false
+
+    fun set(fx: Fx) {
+        color = fx.matrix ?: FloatArray(16).also { it[0] = 1f; it[5] = 1f; it[10] = 1f; it[15] = 1f }
+        zoom = fx.zoom; flipX = fx.flipX; flipY = fx.flipY
+    }
+}
+
+class LiveColor(private val live: LiveFx) : RgbMatrix {
+    override fun getMatrix(presentationTimeUs: Long, useHdr: Boolean): FloatArray = live.color
+}
+
+class LiveGeometry(private val live: LiveFx) : MatrixTransformation {
+    override fun getMatrix(presentationTimeUs: Long): android.graphics.Matrix {
+        val m = android.graphics.Matrix()
+        m.postScale(live.zoom * (if (live.flipX) -1f else 1f), live.zoom * (if (live.flipY) -1f else 1f))
+        return m
+    }
+}
+
+fun buildLiveEffects(live: LiveFx, rotation: Float): List<Effect> {
+    val out = ArrayList<Effect>()
+    if (rotation != 0f) out.add(ScaleAndRotateTransformation.Builder().setRotationDegrees(-rotation).build())
+    out.add(LiveColor(live))
+    out.add(LiveGeometry(live))
     return out
 }

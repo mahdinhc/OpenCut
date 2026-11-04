@@ -50,6 +50,7 @@ import kotlin.math.min
  * All Media3 API usage is isolated here so version bumps only touch this file.
  */
 class ExportEngine(private val ctx: Context) {
+    init { Fonts.init(ctx) }
     private val ui = Handler(Looper.getMainLooper())
     private var transformer: Transformer? = null
     private var done: ((Uri?, String?) -> Unit)? = null
@@ -232,16 +233,8 @@ class FrameOverlay(private val ctx: Context, private val W: Int, private val H: 
         return bmp
     }
 
-    private fun typeface(o: JSONObject): Typeface {
-        val style = when {
-            o.optBoolean("bold") && o.optBoolean("italic") -> Typeface.BOLD_ITALIC
-            o.optBoolean("bold") -> Typeface.BOLD
-            o.optBoolean("italic") -> Typeface.ITALIC
-            else -> Typeface.NORMAL
-        }
-        val family = when (o.optString("font", "sans")) { "serif" -> "serif"; "mono" -> "monospace"; "condensed" -> "sans-serif-condensed"; else -> "sans-serif" }
-        return Typeface.create(family, style)
-    }
+    private fun typeface(o: JSONObject): Typeface =
+        Fonts.typeface(o.optString("font", "poppins"), o.optBoolean("bold"), o.optBoolean("italic"))
 
     private fun draw(c: Canvas, o: JSONObject) {
         val alpha = (o.optDouble("opacity", 1.0) * 255).toInt().coerceIn(0, 255)
