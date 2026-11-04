@@ -47,6 +47,7 @@ class PreviewView(private val rc: ThemedReactContext) : FrameLayout(rc) {
     private var curMs = 0L
     private var wantPlaying = false
     private var lastRot = Float.NaN
+    private var ratio = 0f
     private val live = LiveFx()
     private var scrubbing = false
     private var tick = 0
@@ -70,10 +71,10 @@ class PreviewView(private val rc: ThemedReactContext) : FrameLayout(rc) {
     init {
         setBackgroundColor(Color.BLACK)
         pv.useController = false
-        pv.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
+        pv.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FILL
         pv.setShutterBackgroundColor(Color.BLACK)
         pv.player = player
-        player.setVideoEffects(buildLiveEffects(live, 0f)); lastRot = 0f
+        player.setVideoEffects(buildLiveEffects(live, 0f, ratio)); lastRot = 0f
         addView(pv, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
         player.setSeekParameters(SeekParameters.EXACT)
         player.addListener(object : Player.Listener {
@@ -121,6 +122,13 @@ class PreviewView(private val rc: ThemedReactContext) : FrameLayout(rc) {
         } else {
             applySeg(player.currentMediaItemIndex)
         }
+    }
+
+    fun setRatio(r: Float) {
+        if (r == ratio) return
+        ratio = r
+        player.setVideoEffects(buildLiveEffects(live, if (lastRot.isNaN()) 0f else lastRot, ratio))
+        if (!wantPlaying) scheduleRefresh()
     }
 
     fun setAudio(json: String) {
@@ -191,7 +199,7 @@ class PreviewView(private val rc: ThemedReactContext) : FrameLayout(rc) {
         live.set(s.fx)                       // colour / zoom / flip: read per frame, no pipeline rebuild
         if (s.fx.rotation != lastRot) {      // rotation changes the frame size -> swap the static effect
             lastRot = s.fx.rotation
-            player.setVideoEffects(buildLiveEffects(live, s.fx.rotation))
+            player.setVideoEffects(buildLiveEffects(live, s.fx.rotation, ratio))
         }
         if (!wantPlaying) scheduleRefresh()
     }

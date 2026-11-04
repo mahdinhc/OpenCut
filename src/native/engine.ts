@@ -30,7 +30,7 @@ export const Engine = {
 
 export interface PreviewProps {
   style?: StyleProp<ViewStyle>;
-  timeline: string; audio: string; playing: boolean;
+  timeline: string; audio: string; ratio: number; playing: boolean;
   seek: {ms: number; exact: boolean; n: number};
   onProgress?: (e: {nativeEvent: {ms: number}}) => void;
   onEnded?: () => void;

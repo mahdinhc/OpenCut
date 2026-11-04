@@ -218,7 +218,7 @@ export default function Timeline() {
   }, []);
 
   const scrollHandler = useAnimatedScrollHandler({
-    onScroll: e => { if (user.value) runOnJS(onScrub)(e.contentOffset.x); },
+    onScroll: e => { if (user.value) { posSV.value = e.contentOffset.x / ppmSV.value; runOnJS(onScrub)(e.contentOffset.x); } },
     onBeginDrag: () => { user.value = true; runOnJS(startScrub)(); },
     onEndDrag: e => {
       if (Math.abs(e.velocity?.x ?? 0) < 0.05) { user.value = false; runOnJS(endScrub)(); }

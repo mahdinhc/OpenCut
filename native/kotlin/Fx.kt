@@ -7,6 +7,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.effect.Brightness
 import androidx.media3.effect.Contrast
 import androidx.media3.effect.MatrixTransformation
+import androidx.media3.effect.Presentation
 import androidx.media3.effect.RgbMatrix
 import androidx.media3.effect.ScaleAndRotateTransformation
 import org.json.JSONObject
@@ -89,10 +90,12 @@ class LiveGeometry(private val live: LiveFx) : MatrixTransformation {
     }
 }
 
-fun buildLiveEffects(live: LiveFx, rotation: Float): List<Effect> {
+fun buildLiveEffects(live: LiveFx, rotation: Float, ratio: Float): List<Effect> {
     val out = ArrayList<Effect>()
     if (rotation != 0f) out.add(ScaleAndRotateTransformation.Builder().setRotationDegrees(-rotation).build())
     out.add(LiveColor(live))
     out.add(LiveGeometry(live))
+    // identical to the exporter: fit the frame inside the canvas, letterboxed, so preview == export
+    if (ratio > 0f) out.add(Presentation.createForAspectRatio(ratio, Presentation.LAYOUT_SCALE_TO_FIT))
     return out
 }

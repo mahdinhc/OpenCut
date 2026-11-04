@@ -107,8 +107,8 @@ export default function Preview() {
         <View style={{width: cw, height: ch, backgroundColor: '#000', overflow: 'hidden'}}>
           <PreviewView
             style={StyleSheet.absoluteFill}
-            timeline={frozen.current.timeline} audio={frozen.current.audio} playing={playing} seek={seek}
-            onProgress={e => useTransport.getState().setPos(e.nativeEvent.ms)}
+            ratio={ratio} timeline={frozen.current.timeline} audio={frozen.current.audio} playing={playing} seek={seek}
+            onProgress={e => { const t = useTransport.getState(); if (t.playing && !t.scrubbing) t.setPos(e.nativeEvent.ms); }}
             onEnded={() => { const t = useTransport.getState(); t.pause(); t.setPos(t.total); }}
           />
           <Pressable style={StyleSheet.absoluteFill} onPress={() => select(null)} />

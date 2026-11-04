@@ -12,6 +12,7 @@ class PreviewViewManager : SimpleViewManager<PreviewView>() {
     override fun createViewInstance(c: ThemedReactContext) = PreviewView(c)
 
     @ReactProp(name = "timeline") fun setTimeline(v: PreviewView, s: String?) = v.setTimeline(s ?: "[]")
+    @ReactProp(name = "ratio") fun setRatio(v: PreviewView, r: Float) = v.setRatio(r)
     @ReactProp(name = "audio") fun setAudio(v: PreviewView, s: String?) = v.setAudio(s ?: "[]")
     @ReactProp(name = "playing") fun setPlaying(v: PreviewView, b: Boolean) = v.setPlaying(b)
     @ReactProp(name = "seek") fun setSeek(v: PreviewView, m: ReadableMap?) {
